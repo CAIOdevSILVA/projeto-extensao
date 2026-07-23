@@ -1,98 +1,172 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { AppButton } from '@/components/app/AppButton';
+import { Card } from '@/components/app/Card';
+import { Screen, ScreenBlock } from '@/components/app/Screen';
+import { useApp } from '@/context/AppContext';
+import { theme } from '@/theme/app-theme';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { state, counts, setWeeklyGoal, isReady } = useApp();
+  const [goalDraft, setGoalDraft] = useState(state.weeklyGoal);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    setGoalDraft(state.weeklyGoal);
+  }, [state.weeklyGoal]);
+
+  function saveGoal() {
+    setWeeklyGoal(goalDraft.trim());
+  }
+
+  if (!isReady) {
+    return (
+      <Screen>
+        <Text style={styles.loading}>Carregando organização do salão...</Text>
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen>
+      <ScreenBlock>
+        <Text style={styles.appName}>Salão Ágil</Text>
+        <Text style={styles.subtitle}>Organização simples para uma semana mais tranquila.</Text>
+      </ScreenBlock>
+
+      <Card style={styles.hero}>
+        <Text style={styles.period}>Semana atual</Text>
+        <Text style={styles.periodValue}>{state.weekPeriod}</Text>
+        <Text style={styles.message}>
+          Organize as tarefas do salão e prepare tudo com tranquilidade para os atendimentos do fim de semana.
+        </Text>
+      </Card>
+
+      <View style={styles.statsGrid}>
+        <StatCard label="Planejadas" value={counts.planned} />
+        <StatCard label="Concluídas" value={counts.completed} />
+        <StatCard label="Em andamento" value={counts.doing} />
+        <StatCard label="Conclusão" value={`${counts.completionPercent}%`} />
+      </View>
+
+      <Card style={styles.goalCard}>
+        <Text style={styles.sectionTitle}>Meta da semana</Text>
+        <TextInput
+          value={goalDraft}
+          onChangeText={setGoalDraft}
+          onBlur={saveGoal}
+          placeholder="Defina uma meta simples para esta semana"
+          placeholderTextColor={theme.colors.muted}
+          multiline
+          style={styles.goalInput}
+        />
+        <AppButton title="Salvar meta" variant="secondary" icon="save-outline" onPress={saveGoal} />
+      </Card>
+
+      <View style={styles.actions}>
+        <AppButton
+          title="Adicionar tarefa"
+          icon="add-circle-outline"
+          onPress={() => router.push({ pathname: '/tarefas', params: { openForm: '1' } })}
+        />
+        <AppButton
+          title="Planejar semana"
+          variant="secondary"
+          icon="calendar-outline"
+          onPress={() => router.push({ pathname: '/tarefas', params: { planning: '1' } })}
+        />
+      </View>
+    </Screen>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: number | string }) {
+  return (
+    <Card style={styles.statCard}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  loading: {
+    color: theme.colors.muted,
+    fontSize: 16,
+  },
+  appName: {
+    color: theme.colors.text,
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '900',
+  },
+  subtitle: {
+    color: theme.colors.muted,
+    fontSize: 16,
+    lineHeight: 23,
+  },
+  hero: {
+    backgroundColor: theme.colors.surfaceSoft,
+    gap: 8,
+  },
+  period: {
+    color: theme.colors.primaryDark,
+    fontWeight: '800',
+    fontSize: 13,
+    textTransform: 'uppercase',
+  },
+  periodValue: {
+    color: theme.colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  message: {
+    color: theme.colors.muted,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  statsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  statCard: {
+    width: '48%',
+    minHeight: 92,
+    justifyContent: 'center',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  statValue: {
+    color: theme.colors.primary,
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  statLabel: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    marginTop: 4,
+  },
+  goalCard: {
+    gap: 12,
+  },
+  sectionTitle: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  goalInput: {
+    minHeight: 84,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: '#FFFDFB',
+    color: theme.colors.text,
+    padding: 12,
+    fontSize: 15,
+    lineHeight: 21,
+    textAlignVertical: 'top',
+  },
+  actions: {
+    gap: 10,
   },
 });
